@@ -1,0 +1,21 @@
+@model proset.Models.Room
+@{
+  ViewData["Title"] = $"Room {Model.room_id}";
+}
+
+<div class="text-center">
+  <h1 class="display-4">Moving to @(Model.room_id)?</h1>
+</div>
+
+<div>
+  <p>Hi @(Model.user_id)! Are you sure you want to move to @(Model.room_id)?</p>
+
+
+  <form method="post">
+    <input type="hidden" name="user_id" value=@(Model.user_id)>
+    <input type="hidden" name="room_id" value=@(Model.room_id)>
+    <input type="hidden" name="username" value="hehehehhe">
+    <button asp-controller="Room" asp-action=@(Model.room_id)>Yes</button>
+  </form>
+</div>
+

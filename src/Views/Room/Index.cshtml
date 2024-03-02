@@ -1,0 +1,13 @@
+@model proset.Models.Room
+@{
+  ViewData["Title"] = $"Room {Model.room_id}";
+}
+
+<div class="text-center">
+  <h1 class="display-4">Welcome to @(Model.room_id)!</h1>
+</div>
+
+<div>
+  <p>Hi @(Model.user_id)!</p>
+</div>
+
