@@ -18,23 +18,27 @@ public class RoomController : Controller {
             return View("Error", new ErrorViewModel { Reason = "room is null" }); // TODO
         }
 
-        if (Request.Cookies.TryGetValue("user_id", out string? user_id) && !(user_id is null) && user_id.Length <= 36) {
+        if (Request.Cookies.TryGetValue("user_id", out string? user_id) 
+                && !(user_id is null) && user_id.Length <= 36) {
             User? current_user = _context.Users?.SingleOrDefault<User>(u => u.user_id == user_id);
 
             // User not in database or currently in a different room, 
             // so they must be added/switch first
             if (current_user is null || current_user.room_id != room_id) {
-                return View("MoveRoom", new Room { room_id = room_id, user_id = user_id });
+                return View("MoveRoom", new MoveRoomView { 
+                        room_id = room_id, 
+                        user_id = user_id,
+                    });
             }
 
-            return View(new Room { room_id = room_id, user_id = user_id });
+            return View(new RoomView { room_id = room_id, user_id = user_id, username = current_user.username });
         }
 
         // If they have no cookie, give them a free cookie, and then 
         // redirect them to the add room page
         user_id = Guid.NewGuid().ToString();
         Response.Cookies.Append("user_id", user_id, new CookieOptions { HttpOnly = true });
-        return View("MoveRoom", new Room { room_id = room_id, user_id = user_id });
+        return View("MoveRoom", new MoveRoomView { room_id = room_id, user_id = user_id });
     }
     
     // Technically should be PUT, but we can't PUT with forms, so this is POST
@@ -64,10 +68,11 @@ public class RoomController : Controller {
         } else {
             // Update
             current_user.room_id = move_room.room_id;
+            current_user.username = move_room.username;
             await _context.SaveChangesAsync();
         }
 
-        return View(new Room { room_id = move_room.room_id, user_id = move_room.user_id });
+        return View(new RoomView { room_id = move_room.room_id, user_id = move_room.user_id, username = move_room.username });
     }
 
 }

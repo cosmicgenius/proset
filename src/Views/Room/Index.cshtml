@@ -1,4 +1,4 @@
-@model proset.Models.Room
+@model proset.Models.RoomView
 @{
   ViewData["Title"] = $"Room {Model.room_id}";
 }
@@ -8,6 +8,7 @@
 </div>
 
 <div>
-  <p>Hi @(Model.user_id)!</p>
+  <p>Hi @(Model.username)!</p>
+  <!-- TODO: the game should be here -->
 </div>
 
