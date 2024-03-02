@@ -72,7 +72,8 @@ public class RoomController : Controller {
             await _context.SaveChangesAsync();
         }
 
-        return View(new RoomView { room_id = move_room.room_id, user_id = move_room.user_id, username = move_room.username });
+        //return View(new RoomView { room_id = move_room.room_id, user_id = move_room.user_id, username = move_room.username });
+        return RedirectToAction("Index", new { room_id = move_room.room_id });
     }
 
 }
