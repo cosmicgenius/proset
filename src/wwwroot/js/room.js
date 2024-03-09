@@ -5,13 +5,13 @@ let game_state;
 let card_active = [];
 
 document.addEventListener("keydown", event => {
-    for (let i = 1; i <= Math.min(9, game_state.cards); i++) {
+    for (let i = 1; i <= Math.min(9, game_state.num_cards); i++) {
         if (event.key === `${i}`) {
             document.getElementById(`card-${i}`).click();
         }
     }
 
-    if (game_state.cards >= 10 && event.key === "0") {
+    if (game_state.num_cards >= 10 && event.key === "0") {
         document.getElementById(`card-10`).click();
     }
 }); 

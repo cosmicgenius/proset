@@ -27,11 +27,19 @@ public class RoomApiController : Controller {
         _logger.LogInformation("a");
         
         for (int i = 0; true; i++) {
+            Game? current_game = _context.Games?.SingleOrDefault(g => g.room_id == room_id);
+
+            // Deal with this later (we should create a new game)
+            if (current_game is null) {
+                Response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
             await Response.WriteAsync($"data: { JsonSerializer.Serialize(new {
-                    cards = 7,
-                    current_cards = new List<int> { 1, 2, 3, 5, 8, 13, 21 },
-                    game_type = "proset",
-                    tokens = 6,
+                    num_cards = current_game.num_cards,
+                    current_cards = current_game.card_order.Where(c => c > 0).Take(current_game.num_cards),
+                    game_type = current_game.game_type,
+                    num_tokens = current_game.num_cards,
                 }) }\r\r");
             await Response.Body.FlushAsync();
 
