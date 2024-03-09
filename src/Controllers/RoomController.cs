@@ -30,8 +30,16 @@ public class RoomController : Controller {
                         user_id = user_id,
                     });
             }
+            
+            List<string> player_usernames = _context.Users?.Where<User>(u => u.room_id == room_id)
+                .Select(u => u.username).ToList() ?? new List<string>();
 
-            return View(new RoomView { room_id = room_id, user_id = user_id, username = current_user.username });
+            return View(new RoomView { 
+                    room_id = room_id, 
+                    user_id = user_id,
+                    username = current_user.username,
+                    player_usernames = player_usernames
+                });
         }
 
         // If they have no cookie, give them a free cookie, and then 
@@ -43,7 +51,6 @@ public class RoomController : Controller {
     
     // Technically should be PUT, but we can't PUT with forms, so this is POST
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(MoveRoom move_room) {
         // Shouldn't happen
         if (_context.Users is null) {
@@ -72,7 +79,6 @@ public class RoomController : Controller {
             await _context.SaveChangesAsync();
         }
 
-        //return View(new RoomView { room_id = move_room.room_id, user_id = move_room.user_id, username = move_room.username });
         return RedirectToAction("Index", new { room_id = move_room.room_id });
     }
 

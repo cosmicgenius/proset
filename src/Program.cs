@@ -32,6 +32,11 @@ app.MapControllerRoute(
     defaults: new { controller = "Room", action = "Index" }
 );
 app.MapControllerRoute(
+    name: "room-api-sse",
+    pattern: "api/sse/{*room_id}",
+    defaults: new { controller = "RoomApi", action = "SSE" }
+);
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}"
 );

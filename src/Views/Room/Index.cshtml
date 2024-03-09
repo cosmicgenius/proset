@@ -3,6 +3,11 @@
   ViewData["Title"] = $"Room {Model.room_id}";
 }
 
+@section Scripts {
+  <script type="text/javascript" src="/js/room.js"></script>
+}
+
+<div id="room_id" style="display: none">@(Model.room_id)</div>
 <div class="text-center">
   <h1 class="display-4">Welcome to @(Model.room_id)!</h1>
 </div>
@@ -10,5 +15,14 @@
 <div>
   <p>Hi @(Model.username)!</p>
   <!-- TODO: the game should be here -->
+  Cards:
+  <div id="cards" class="card-container"></div>
+
+  Players:
+  <ul>
+    @foreach (string name in Model.player_usernames) {
+      <li>@name</li>
+    }
+  </ul>
 </div>
 
