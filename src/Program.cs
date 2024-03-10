@@ -8,6 +8,8 @@ builder.Configuration.SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("
 builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<SqlContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("SqlContext")));
+builder.Services.AddSingleton<IEventEmitter, GameEventEmitter>();
+builder.Services.AddHostedService<TimedHostedService>();
 
 var app = builder.Build();
 
