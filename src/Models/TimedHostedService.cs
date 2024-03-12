@@ -18,8 +18,8 @@ public class TimedHostedService : IHostedService, IDisposable {
     public Task StartAsync(CancellationToken stoppingToken) {
         _logger.LogInformation("Timed Hosted Service running.");
 
-        _timer = new Timer(DoWork, null, 0,
-            15 * 1000);
+        //_timer = new Timer(DoWork, null, 0,
+        //    15 * 1000);
 
         return Task.CompletedTask;
     }

@@ -5,6 +5,7 @@ namespace proset.Models;
 public interface IEventSubscriber {
     public string id { get; }
     public bool alive { get; }
+    public void Dispose();
     public Task Emit(string data);
 }
 
@@ -23,6 +24,10 @@ public class GameEventSubscriber : IEventSubscriber {
         _response = response;
         this.id = id;
         this.alive = true;
+    }
+
+    public void Dispose() {
+        alive = false;
     }
 
     public async Task Emit(string data) {
@@ -44,7 +49,9 @@ public class GameEventEmitter : IEventEmitter {
 
     public void Subscribe(string id, IEventSubscriber subscriber) {
         _subscribers.TryAdd(id, new ConcurrentDictionary<string, IEventSubscriber>());
-        _subscribers[id].TryAdd(subscriber.id, subscriber);
+        _subscribers[id].AddOrUpdate(subscriber.id, subscriber, (_, old) => {
+            old.Dispose();
+            return subscriber;});
     }
 
     public void Unsubscribe(string id, string subscriber_id) {

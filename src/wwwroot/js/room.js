@@ -53,5 +53,15 @@ function bindSSE(url) {
     };
 }
 
-window.onload = () => bindSSE("/api/sse/" + room_id);
+window.onload = () => bindSSE(`/api/sse/${room_id}`);
+
+function emit() {
+    fetch(`/api/sse/${room_id}`, {
+        method: "POST",
+        body: JSON.stringify([1, 7, 6]),
+        headers: {
+            "Content-type": "application/json; charset=UTF-8"
+        }
+    });
+}
 
