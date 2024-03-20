@@ -23,6 +23,12 @@ function toggleCard(idx) {
         card_active[idx] ? "card-active" : "card-inactive";
 }
 
+function isValid() {
+    return game_state.current_cards.reduce(
+        (acc, cur, idx) => card_active[idx] ? acc ^ cur : acc, 0
+    ) === 0;
+}
+
 function bindSSE(url) {
     if (source) source.close();
     source = new EventSource(url);
@@ -56,12 +62,19 @@ function bindSSE(url) {
 window.onload = () => bindSSE(`/api/sse/${room_id}`);
 
 function emit() {
-    fetch(`/api/sse/${room_id}`, {
-        method: "POST",
-        body: JSON.stringify([1, 7, 6]),
-        headers: {
-            "Content-type": "application/json; charset=UTF-8"
-        }
-    });
+    if (isValid()) {
+        console.log("Found proset :)");
+        fetch(`/api/sse/${room_id}`, {
+            method: "POST",
+            body: JSON.stringify({
+                cards: game_state.current_cards.filter((_, idx) => card_active[idx])
+            }),
+            headers: {
+                "Content-type": "application/json; charset=UTF-8"
+            }
+        });
+    } else {
+        console.log("Not proset :(");
+    }
 }
 

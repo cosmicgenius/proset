@@ -11,7 +11,6 @@ public class RoomApiController : Controller {
     private readonly SqlContext _context;
     private readonly IEventEmitter _sse_emitter;
 
-
     public RoomApiController(ILogger<RoomApiController> logger, SqlContext context, 
             IEventEmitter sse_emitter) {
         _logger = logger;
@@ -25,6 +24,8 @@ public class RoomApiController : Controller {
         int num_tokens = 6;
         List<int> card_order = Enumerable.Range(0, 1 << num_tokens).ToList();
 
+        // Dirty Fisher-Yates shuffle
+        // because dotnet core doesn't have this built in ??
         for (int i = card_order.Count - 1; i > 0; i--) {
             int j = rng.Next(i + 1);
             int tmp = card_order[i];
@@ -40,6 +41,8 @@ public class RoomApiController : Controller {
             card_order = card_order
         };
         await _context.Games.AddAsync(game);
+        await _context.SaveChangesAsync();
+
         return game;
     }
     
@@ -99,7 +102,7 @@ public class RoomApiController : Controller {
 
     [HttpPost]
     [ActionName("SSE")]
-    public async Task SSEPost(string? room_id) {
+    public async Task SSEPost(string? room_id, [FromBody]RoomPost room_post) {
         if (room_id is null) {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return;
@@ -128,7 +131,26 @@ public class RoomApiController : Controller {
             return;
         }
 
-        // TODO: modify the current game
+        // Check cards are valid 
+        if (room_post.cards.Aggregate(0, (acc, cur) => acc ^ cur) != 0 || room_post.cards.Exists(cur => cur < 0)) {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return;
+        }
+
+        // Modify the current game
+        // We cannot know if they are in order, unfortunately, so we must iterate
+        foreach (int card in room_post.cards) {
+            for (int i = 0; i < current_game.card_order.Count; i++) {
+                if (current_game.card_order[i] == card) {
+                    current_game.card_order[i] *= -1;
+                } else if (current_game.card_order[i] == -card) {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    return;
+                }
+            }
+        }
+        await _context.SaveChangesAsync();
+
         GameEvent e = new GameEvent {
                 num_cards = current_game.num_cards,
                 current_cards = current_game.card_order.Where(c => c > 0).Take(current_game.num_cards).ToList(),
