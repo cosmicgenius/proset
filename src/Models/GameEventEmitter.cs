@@ -35,7 +35,7 @@ public class GameEventSubscriber : IEventSubscriber {
         await _response.Body.FlushAsync();
 
         if (_response.HttpContext.RequestAborted.IsCancellationRequested == true) {
-            alive = false;
+            Dispose();
         }
     }
 }

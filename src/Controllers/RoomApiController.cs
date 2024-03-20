@@ -11,11 +11,36 @@ public class RoomApiController : Controller {
     private readonly SqlContext _context;
     private readonly IEventEmitter _sse_emitter;
 
+
     public RoomApiController(ILogger<RoomApiController> logger, SqlContext context, 
             IEventEmitter sse_emitter) {
         _logger = logger;
         _context = context;
         _sse_emitter = sse_emitter;
+    }
+
+    private async Task<Game> NewGame(string room_id) {
+        Random rng = new Random();
+
+        int num_tokens = 6;
+        List<int> card_order = Enumerable.Range(0, 1 << num_tokens).ToList();
+
+        for (int i = card_order.Count - 1; i > 0; i--) {
+            int j = rng.Next(i + 1);
+            int tmp = card_order[i];
+            card_order[i] = card_order[j];
+            card_order[j] = tmp;
+        }
+
+        Game game = new Game() {
+            room_id = room_id,
+            num_cards = 7,
+            num_tokens = 6,
+            game_type = GameType.proset,
+            card_order = card_order
+        };
+        await _context.Games.AddAsync(game);
+        return game;
     }
     
     [HttpGet]
@@ -40,14 +65,14 @@ public class RoomApiController : Controller {
 
         _logger.LogInformation("a");
 
-        var task = _context.Games?.SingleOrDefaultAsync(g => g.room_id == room_id);
-        Game? current_game = task is null ? null : await task;
+        Game? current_game = await _context.Games.SingleOrDefaultAsync(g => g.room_id == room_id);
 
         // Deal with this later (we should create a new game)
         if (current_game is null) {
-            Response.StatusCode = (int)HttpStatusCode.NotImplemented;
+            /*Response.StatusCode = (int)HttpStatusCode.NotImplemented;
             await Response.WriteAsync("No game found");
-            return;
+            return;*/
+            current_game = await NewGame(room_id);
         }
 
         await Response.WriteAsync($"data: { JsonSerializer.Serialize(new {
@@ -70,32 +95,6 @@ public class RoomApiController : Controller {
 
             await Task.Delay(1 * 60 * 1000);
         }
-
-        /*for (int i = 0; true; i++) {
-            Game? current_game = _context.Games?.SingleOrDefault(g => g.room_id == room_id);
-
-            // Deal with this later (we should create a new game)
-            if (current_game is null) {
-                Response.StatusCode = (int)HttpStatusCode.NotFound;
-                return;
-            }
-
-            await Response.WriteAsync($"data: { JsonSerializer.Serialize(new {
-                    num_cards = current_game.num_cards,
-                    current_cards = current_game.card_order.Where(c => c > 0).Take(current_game.num_cards),
-                    game_type = current_game.game_type,
-                    num_tokens = current_game.num_cards,
-                }) }\r\r");
-            await Response.Body.FlushAsync();
-
-            if (Response.HttpContext.RequestAborted.IsCancellationRequested == true) {
-                break;
-            }
-
-            _logger.LogInformation($"b {i}");
-
-            await Task.Delay(15 * 1000);
-        }*/
     }
 
     [HttpPost]
@@ -113,8 +112,7 @@ public class RoomApiController : Controller {
             return;
         }
 
-        var task1 = _context.Users?.SingleOrDefaultAsync(u => u.user_id == user_id);
-        User? current_user = task1 is null ? null : await task1;
+        User? current_user = await _context.Users.SingleOrDefaultAsync(u => u.user_id == user_id);
 
         // User not in database or currently in a different room, 
         if (current_user is null || current_user.room_id != room_id) {
@@ -122,8 +120,7 @@ public class RoomApiController : Controller {
             return;
         }
 
-        var task2 = _context.Games?.SingleOrDefaultAsync(g => g.room_id == room_id);
-        Game? current_game = task2 is null ? null : await task2;
+        Game? current_game = await _context.Games.SingleOrDefaultAsync(g => g.room_id == room_id);
 
         // Trying to post cards into a non existent game
         if (current_game is null) {
@@ -132,7 +129,6 @@ public class RoomApiController : Controller {
         }
 
         // TODO: modify the current game
-
         GameEvent e = new GameEvent {
                 num_cards = current_game.num_cards,
                 current_cards = current_game.card_order.Where(c => c > 0).Take(current_game.num_cards).ToList(),
