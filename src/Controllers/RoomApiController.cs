@@ -22,7 +22,7 @@ public class RoomApiController : Controller {
         Random rng = new Random();
 
         int num_tokens = 6;
-        List<int> card_order = Enumerable.Range(0, 1 << num_tokens).ToList();
+        List<int> card_order = Enumerable.Range(1, 1 << num_tokens).ToList();
 
         // Dirty Fisher-Yates shuffle
         // because dotnet core doesn't have this built in ??
