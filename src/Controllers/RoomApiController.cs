@@ -80,9 +80,10 @@ public class RoomApiController : Controller {
 
         await Response.WriteAsync($"data: { JsonSerializer.Serialize(new {
                 num_cards = current_game.num_cards,
-                current_cards = current_game.card_order.Where(c => c > 0).Take(current_game.num_cards),
+                current_cards = current_game.card_order
+                    .Where(c => c > 0).Take(current_game.num_cards),
                 game_type = current_game.game_type,
-                num_tokens = current_game.num_cards,
+                num_tokens = current_game.num_tokens,
             }) }\r\r");
         await Response.Body.FlushAsync();
 
@@ -132,7 +133,8 @@ public class RoomApiController : Controller {
         }
 
         // Check cards are valid 
-        if (room_post.cards.Aggregate(0, (acc, cur) => acc ^ cur) != 0 || room_post.cards.Exists(cur => cur < 0)) {
+        if (room_post.cards.Aggregate(0, (acc, cur) => acc ^ cur) != 0 
+                || room_post.cards.Exists(cur => cur < 0)) {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return;
         }
@@ -153,9 +155,10 @@ public class RoomApiController : Controller {
 
         GameEvent e = new GameEvent {
                 num_cards = current_game.num_cards,
-                current_cards = current_game.card_order.Where(c => c > 0).Take(current_game.num_cards).ToList(),
+                current_cards = current_game.card_order.Where(c => c > 0)
+                    .Take(current_game.num_cards).ToList(),
                 game_type = current_game.game_type,
-                num_tokens = current_game.num_cards,
+                num_tokens = current_game.num_tokens,
             };
 
         await _sse_emitter.Emit(room_id, JsonSerializer.Serialize(e));

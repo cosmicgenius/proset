@@ -20,22 +20,3 @@ html {
 body {
   margin-bottom: 60px;
 }
-
-.card-container {
-    display: flex;
-    flex-direction: row;
-}
-
-.card-active, .card-inactive {
-    margin: 1rem;
-    padding: 1rem;
-    border: 1px solid black;
-    background-color: #ddd;
-    flex-shrink: 1;
-}
-
-.card-active {
-    -webkit-box-shadow: inset 0px 0px 0px 2px #0f0;
-    -moz-box-shadow: inset 0px 0px 0px 2px #0f0;
-    box-shadow: inset 0px 0px 0px 2px #0f0;
-}

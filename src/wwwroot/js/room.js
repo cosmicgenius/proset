@@ -29,6 +29,12 @@ function isValid() {
     ) === 0;
 }
 
+function generateCardInside(card) {
+    return Array.from({ length: game_state.num_tokens }, (_, idx) =>
+        `<div class="dot dot-${idx + 1} dot-${(card & (1 << idx)) > 0 ? "active" : "inactive"}"></div>`
+    ).join("");
+}
+
 function bindSSE(url) {
     if (source) source.close();
     source = new EventSource(url);
@@ -45,7 +51,7 @@ function bindSSE(url) {
                         id="card-${idx + 1}"
                         onclick="toggleCard(${idx})"
                     >
-                        ${card}
+                        ${generateCardInside(card)}
                     </div>
                 `).join("\n");
 
