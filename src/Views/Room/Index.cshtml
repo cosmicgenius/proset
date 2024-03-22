@@ -18,17 +18,12 @@
 
 <div>
   <p>Hi @(Model.username)!</p>
-  <!-- TODO: the game should be here -->
   Cards:
   <div id="cards" class="card-container"></div>
 
-  Submit: <button onclick="emit()">Submit</button>
+  <button onclick="emit()">Submit</button>
 
-  Players:
-  <ul>
-    @foreach (string name in Model.player_usernames) {
-      <li>@name</li>
-    }
-  </ul>
+  <p>Players:</p>
+  <ul id="players"></ul>
 </div>
 

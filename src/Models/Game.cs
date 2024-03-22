@@ -8,7 +8,7 @@ namespace proset.Models {
 
     public class Game {
         [Key]
-        public string room_id { get; set; }
+        public string room_id { get; set; } = "";
         
         public int num_cards { get; set; }
         public int num_tokens { get; set; }

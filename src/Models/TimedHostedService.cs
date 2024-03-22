@@ -24,7 +24,7 @@ public class TimedHostedService : IHostedService, IDisposable {
         return Task.CompletedTask;
     }
 
-    private void DoWork(object? state) {
+    /*private void DoWork(object? state) {
         var count = Interlocked.Increment(ref executionCount);
 
         string room_id = "test";
@@ -45,7 +45,7 @@ public class TimedHostedService : IHostedService, IDisposable {
 
         _sse_emitter.Emit(room_id, JsonSerializer.Serialize(e));
         _logger.LogInformation($"Emit #{count}: room {room_id}, data: {JsonSerializer.Serialize(e)} ");
-    }
+    }*/
 
     public Task StopAsync(CancellationToken stoppingToken) {
         _logger.LogInformation("Timed Hosted Service is stopping.");

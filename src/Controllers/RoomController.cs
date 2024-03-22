@@ -28,7 +28,7 @@ public class RoomController : Controller {
             return View("MoveRoom", new MoveRoomView { room_id = room_id, user_id = user_id });
         }
 
-        User? current_user = _context.Users?.SingleOrDefault<User>(u => u.user_id == user_id);
+        User? current_user = _context.Users.SingleOrDefault<User>(u => u.user_id == user_id);
 
         // User not in database or currently in a different room, 
         // so they must be added/switch first
@@ -39,14 +39,16 @@ public class RoomController : Controller {
                 });
         }
         
-        List<string> player_usernames = _context.Users?.Where<User>(u => u.room_id == room_id)
+        /*
+        List<string> player_usernames = _context.Users.Where<User>(u => u.room_id == room_id)
             .Select(u => u.username).ToList() ?? new List<string>();
+        */
 
         return View(new RoomView { 
                 room_id = room_id, 
                 user_id = user_id,
-                username = current_user.username,
-                player_usernames = player_usernames
+                username = current_user.username
+                //player_usernames = player_usernames
             });
     }
     
@@ -77,6 +79,7 @@ public class RoomController : Controller {
             // Update
             current_user.room_id = move_room.room_id;
             current_user.username = move_room.username;
+            current_user.score = 0;
             await _context.SaveChangesAsync();
         }
 

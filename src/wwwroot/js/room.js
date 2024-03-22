@@ -1,6 +1,7 @@
 const room_id = document.getElementById("room_id").textContent;
 let source;
 let game_state;
+let player_state;
 
 let card_active = [];
 
@@ -35,14 +36,10 @@ function generateCardInside(card) {
     ).join("");
 }
 
-function bindSSE(url) {
-    if (source) source.close();
-    source = new EventSource(url);
-
-    source.onmessage = event => {
-        console.log("Message: " + event.data);
-        game_state = JSON.parse(event.data);
-
+function handleSSEEvent(data) {
+    // game state update
+    if (data.event_type === 1) {
+        game_state = data;
         document.getElementById("cards").innerHTML = 
             game_state.current_cards.map((card, idx) => `
                     <div 
@@ -56,6 +53,24 @@ function bindSSE(url) {
                 `).join("\n");
 
         card_active = game_state.current_cards.map(_ => false);
+    }
+    // player state update
+    else if (data.event_type === 2) {
+        player_state = data;
+        document.getElementById("players").innerHTML = 
+            player_state.players.map((player, idx) => `
+                    <li>${player}: ${player_state.scores[idx]}</li>
+                `).join("\n");
+    }
+}
+
+function bindSSE(url) {
+    if (source) source.close();
+    source = new EventSource(url);
+
+    source.onmessage = event => {
+        console.log("Message: " + event.data);
+        handleSSEEvent(JSON.parse(event.data));
     };
     source.onopen = _event => {
         console.log("Connected to SSE");

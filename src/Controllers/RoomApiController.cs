@@ -17,34 +17,6 @@ public class RoomApiController : Controller {
         _context = context;
         _sse_emitter = sse_emitter;
     }
-
-    private async Task<Game> NewGame(string room_id) {
-        Random rng = new Random();
-
-        int num_tokens = 6;
-        List<int> card_order = Enumerable.Range(1, 1 << num_tokens).ToList();
-
-        // Dirty Fisher-Yates shuffle
-        // because dotnet core doesn't have this built in ??
-        for (int i = card_order.Count - 1; i > 0; i--) {
-            int j = rng.Next(i + 1);
-            int tmp = card_order[i];
-            card_order[i] = card_order[j];
-            card_order[j] = tmp;
-        }
-
-        Game game = new Game() {
-            room_id = room_id,
-            num_cards = 7,
-            num_tokens = 6,
-            game_type = GameType.proset,
-            card_order = card_order
-        };
-        await _context.Games.AddAsync(game);
-        await _context.SaveChangesAsync();
-
-        return game;
-    }
     
     [HttpGet]
     [ActionName("SSE")]
@@ -61,6 +33,16 @@ public class RoomApiController : Controller {
             await Response.WriteAsync("Missing or invalid user_id cookie");
             return;
         }
+        // Stupid linter
+        user_id ??= "";
+
+        User? current_user = await _context.Users.SingleOrDefaultAsync(u => u.user_id == user_id);
+
+        // User not in database or currently in a different room, 
+        if (current_user is null || current_user.room_id != room_id) {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return;
+        }
 
         Response.Headers.Add("Content-Type", "text/event-stream");
         Response.Headers.Add("Connection", "Keep-Alive");
@@ -70,29 +52,31 @@ public class RoomApiController : Controller {
 
         Game? current_game = await _context.Games.SingleOrDefaultAsync(g => g.room_id == room_id);
 
-        // Deal with this later (we should create a new game)
         if (current_game is null) {
-            /*Response.StatusCode = (int)HttpStatusCode.NotImplemented;
-            await Response.WriteAsync("No game found");
-            return;*/
             current_game = await NewGame(room_id);
         }
 
-        await Response.WriteAsync($"data: { JsonSerializer.Serialize(new {
+        GameEventSubscriber subscriber = new GameEventSubscriber(Response, user_id);
+        _sse_emitter.Subscribe(room_id, subscriber);
+
+        await Response.WriteAsync($"data: { JsonSerializer.Serialize(new GameStateEvent {
                 num_cards = current_game.num_cards,
-                current_cards = current_game.card_order
-                    .Where(c => c > 0).Take(current_game.num_cards),
+                current_cards = current_game.card_order.Where(c => c > 0)
+                    .Take(current_game.num_cards).ToList(),
                 game_type = current_game.game_type,
                 num_tokens = current_game.num_tokens,
             }) }\r\r");
-        await Response.Body.FlushAsync();
-
-        GameEventSubscriber subscriber = new GameEventSubscriber(Response, user_id ?? "");
-        _sse_emitter.Subscribe(room_id, subscriber);
+        await EmitPlayerEvent(room_id);
+        await _sse_emitter.Flush(room_id);
 
         // Keep alive, and also remove connection after 1 minute of disconnected
         for (int i = 0; true; i++) {
-            if (subscriber.alive == false) {
+            // Broadcast exit
+            subscriber.CheckAlive();
+            if (!subscriber.alive) {
+                await EmitPlayerEvent(room_id);
+                await _sse_emitter.Flush(room_id);
+
                 return;
             }
             _logger.LogInformation($"{user_id} Connected: {i} min");
@@ -151,17 +135,70 @@ public class RoomApiController : Controller {
                 }
             }
         }
+        current_user.score++;
         await _context.SaveChangesAsync();
 
-        GameEvent e = new GameEvent {
+        await EmitGameEvent(room_id, current_game);
+        await EmitPlayerEvent(room_id);
+        await _sse_emitter.Flush(room_id);
+    }
+
+    private async Task EmitGameEvent(string room_id, Game current_game) {
+        GameStateEvent game_state_event = new GameStateEvent {
                 num_cards = current_game.num_cards,
                 current_cards = current_game.card_order.Where(c => c > 0)
                     .Take(current_game.num_cards).ToList(),
                 game_type = current_game.game_type,
                 num_tokens = current_game.num_tokens,
             };
+        await _sse_emitter.Emit(room_id, JsonSerializer.Serialize(game_state_event));
+    }
 
-        await _sse_emitter.Emit(room_id, JsonSerializer.Serialize(e));
-        _logger.LogInformation($"Emit: Room {room_id}, data: {JsonSerializer.Serialize(e)} ");
+    private async Task EmitPlayerEvent(string room_id) {
+        // Only show players that are actually connected (i.e. playing)
+        HashSet<string> active_player_ids = _sse_emitter.GetSubscribers(room_id)?.ToHashSet() ?? new HashSet<string>();
+        List<User> players = _context.Users.Where<User>(
+                u => u.room_id == room_id && active_player_ids.Contains(u.user_id)
+            ).ToList();
+        players.Sort(delegate (User lhs, User rhs) {
+                if (lhs.username == rhs.username) {
+                    return String.Compare(lhs.user_id, rhs.user_id);
+                }
+                return String.Compare(lhs.username, rhs.username);
+            });
+
+        PlayerStateEvent player_state_event = new PlayerStateEvent {
+                players = players.Select(u => u.username).ToList(),
+                scores = players.Select(u => u.score).ToList(),
+            };
+        await _sse_emitter.Emit(room_id, JsonSerializer.Serialize(player_state_event));
+    }
+
+    private async Task<Game> NewGame(string room_id) {
+        Random rng = new Random();
+
+        int num_tokens = 6;
+        List<int> card_order = Enumerable.Range(1, 1 << num_tokens).ToList();
+
+        // Dirty Fisher-Yates shuffle
+        // because dotnet core doesn't have this built in ??
+        for (int i = card_order.Count - 1; i > 0; i--) {
+            int j = rng.Next(i + 1);
+            int tmp = card_order[i];
+            card_order[i] = card_order[j];
+            card_order[j] = tmp;
+        }
+
+        Game game = new Game() {
+            room_id = room_id,
+            num_cards = 7,
+            num_tokens = 6,
+            game_type = GameType.proset,
+            card_order = card_order
+        };
+        await _context.Games.AddAsync(game);
+        await _context.SaveChangesAsync();
+
+        return game;
     }
 }
