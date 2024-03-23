@@ -46,6 +46,16 @@ app.MapControllerRoute(
     defaults: new { controller = "RoomApi", action = "SSE" }
 );
 app.MapControllerRoute(
+    name: "room-api-found",
+    pattern: "api/found/{*room_id}",
+    defaults: new { controller = "RoomApi", action = "Found" }
+);
+app.MapControllerRoute(
+    name: "room-api-new-game",
+    pattern: "api/new-game/{*room_id}",
+    defaults: new { controller = "RoomApi", action = "NewGame" }
+);
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}"
 );

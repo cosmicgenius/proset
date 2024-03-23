@@ -27,7 +27,7 @@ function toggleCard(idx) {
 function isValid() {
     return game_state.current_cards.reduce(
         (acc, cur, idx) => card_active[idx] ? acc ^ cur : acc, 0
-    ) === 0;
+    ) === 0 && card_active.some(b => b);
 }
 
 function generateCardInside(card) {
@@ -40,19 +40,25 @@ function handleSSEEvent(data) {
     // game state update
     if (data.event_type === 1) {
         game_state = data;
-        document.getElementById("cards").innerHTML = 
-            game_state.current_cards.map((card, idx) => `
-                    <div 
-                        class="card-inactive"
-                        name="card-${idx + 1}" 
-                        id="card-${idx + 1}"
-                        onclick="toggleCard(${idx})"
-                    >
-                        ${generateCardInside(card)}
-                    </div>
-                `).join("\n");
 
-        card_active = game_state.current_cards.map(_ => false);
+        if (game_state.current_cards.length !== 0) {
+            document.getElementById("cards").innerHTML = 
+                game_state.current_cards.map((card, idx) => `
+                        <div 
+                            class="card-inactive"
+                            name="card-${idx + 1}" 
+                            id="card-${idx + 1}"
+                            onclick="toggleCard(${idx})"
+                        >
+                            ${generateCardInside(card)}
+                        </div>
+                    `).join("\n");
+
+            card_active = game_state.current_cards.map(_ => false);
+        } else {
+            document.getElementById("cards").innerHTML = 
+                `Game over! <button onclick="newGame()">New Game</button>`;
+        }
     }
     // player state update
     else if (data.event_type === 2) {
@@ -85,7 +91,7 @@ window.onload = () => bindSSE(`/api/sse/${room_id}`);
 function emit() {
     if (isValid()) {
         console.log("Found proset :)");
-        fetch(`/api/sse/${room_id}`, {
+        fetch(`/api/found/${room_id}`, {
             method: "POST",
             body: JSON.stringify({
                 cards: game_state.current_cards.filter((_, idx) => card_active[idx])
@@ -97,5 +103,11 @@ function emit() {
     } else {
         console.log("Not proset :(");
     }
+}
+
+function newGame() {
+    fetch(`/api/new-game/${room_id}`, {
+        method: "POST"
+    });
 }
 

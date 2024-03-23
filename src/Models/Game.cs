@@ -16,5 +16,6 @@ namespace proset.Models {
         public GameType game_type { get; set; }
 
         public List<int> card_order { get; set; } = new List<int>();
+        public int cards_left { get; set; }
     }
 }
