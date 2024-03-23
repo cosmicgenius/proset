@@ -1,5 +1,6 @@
 using proset.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("secrets.json");
@@ -9,6 +10,9 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<SqlContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("SqlContext")));
 builder.Services.AddSingleton<IEventEmitter, GameEventEmitter>();
+
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<SqlContext>();
 
 var app = builder.Build();
 
