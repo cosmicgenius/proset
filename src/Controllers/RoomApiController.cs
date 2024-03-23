@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Text.Json;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using proset.Models;
 
@@ -19,8 +20,7 @@ public class RoomApiController : Controller {
     }
     
     [HttpGet]
-    [ActionName("SSE")]
-    public async Task SSEGet(string? room_id) {
+    public async Task SSE(string? room_id) {
         if (room_id is null) {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             await Response.WriteAsync("No room_id provided");
@@ -53,7 +53,8 @@ public class RoomApiController : Controller {
         Game? current_game = await _context.Games.SingleOrDefaultAsync(g => g.room_id == room_id);
 
         if (current_game is null) {
-            current_game = await NewGame(room_id);
+            current_game = CreateNewGame(room_id, current_game);
+            await _context.SaveChangesAsync();
         }
 
         GameEventSubscriber subscriber = new GameEventSubscriber(Response, user_id);
@@ -61,8 +62,9 @@ public class RoomApiController : Controller {
 
         await Response.WriteAsync($"data: { JsonSerializer.Serialize(new GameStateEvent {
                 num_cards = current_game.num_cards,
-                current_cards = current_game.card_order.Where(c => c > 0)
-                    .Take(current_game.num_cards).ToList(),
+                current_cards = current_game.cards_left > current_game.num_cards ? 
+                    (current_game.card_order.Where(c => c > 0)
+                    .Take(current_game.num_cards).ToList()) : new List<int>(),
                 game_type = current_game.game_type,
                 num_tokens = current_game.num_tokens,
             }) }\r\r");
@@ -86,8 +88,7 @@ public class RoomApiController : Controller {
     }
 
     [HttpPost]
-    [ActionName("SSE")]
-    public async Task SSEPost(string? room_id, [FromBody]RoomPost room_post) {
+    public async Task Found(string? room_id, [FromBody]RoomPost room_post) {
         if (room_id is null) {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return;
@@ -118,7 +119,7 @@ public class RoomApiController : Controller {
 
         // Check cards are valid 
         if (room_post.cards.Aggregate(0, (acc, cur) => acc ^ cur) != 0 
-                || room_post.cards.Exists(cur => cur < 0)) {
+                || room_post.cards.Exists(cur => cur < 0) && room_post.cards.Count > 0) {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return;
         }
@@ -135,6 +136,7 @@ public class RoomApiController : Controller {
                 }
             }
         }
+        current_game.cards_left -= room_post.cards.Count;
         current_user.score++;
         await _context.SaveChangesAsync();
 
@@ -143,11 +145,28 @@ public class RoomApiController : Controller {
         await _sse_emitter.Flush(room_id);
     }
 
+    [HttpPost]
+    public async Task NewGame(string? room_id) {
+        if (room_id is null) {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return;
+        }
+
+        // We don't check for the user to be valid here,
+        // hopefully this isn't really something that can be abused
+        Game? current_game = await _context.Games.SingleOrDefaultAsync(g => g.room_id == room_id);
+        current_game = CreateNewGame(room_id, current_game);
+        await _context.SaveChangesAsync();
+
+        await EmitGameEvent(room_id, current_game);
+    }
+
     private async Task EmitGameEvent(string room_id, Game current_game) {
         GameStateEvent game_state_event = new GameStateEvent {
                 num_cards = current_game.num_cards,
-                current_cards = current_game.card_order.Where(c => c > 0)
-                    .Take(current_game.num_cards).ToList(),
+                current_cards = current_game.cards_left > current_game.num_cards ? 
+                    (current_game.card_order.Where(c => c > 0)
+                    .Take(current_game.num_cards).ToList()) : new List<int>(),
                 game_type = current_game.game_type,
                 num_tokens = current_game.num_tokens,
             };
@@ -174,11 +193,14 @@ public class RoomApiController : Controller {
         await _sse_emitter.Emit(room_id, JsonSerializer.Serialize(player_state_event));
     }
 
-    private async Task<Game> NewGame(string room_id) {
+    // Creates a new game
+    // If old_game is null, adds the new game to the database, and returns the new game
+    // If old_game is not null, modifies the old game and returns a copy of the new game
+    private Game CreateNewGame(string room_id, Game? old_game) {
         Random rng = new Random();
 
         int num_tokens = 6;
-        List<int> card_order = Enumerable.Range(1, 1 << num_tokens).ToList();
+        List<int> card_order = Enumerable.Range(1, (1 << num_tokens) - 1).ToList();
 
         // Dirty Fisher-Yates shuffle
         // because dotnet core doesn't have this built in ??
@@ -189,16 +211,22 @@ public class RoomApiController : Controller {
             card_order[j] = tmp;
         }
 
-        Game game = new Game() {
+        Game new_game = new Game() {
             room_id = room_id,
             num_cards = 7,
             num_tokens = 6,
             game_type = GameType.proset,
-            card_order = card_order
+            card_order = card_order,
+            cards_left = (1 << num_tokens) - 1,
         };
-        await _context.Games.AddAsync(game);
-        await _context.SaveChangesAsync();
-
-        return game;
+        if (old_game is null) {
+            _context.Games.Add(new_game);
+        } else {
+            foreach (PropertyInfo property in 
+                    typeof(Game).GetProperties().Where(p => p.CanWrite)) {
+                property.SetValue(old_game, property.GetValue(new_game, null), null);
+            }
+        }
+        return new_game;
     }
 }
