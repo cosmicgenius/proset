@@ -3,12 +3,27 @@
   ViewData["Title"] = $"Room {Model.room_id}";
 }
 
+@section CSS {
+  <link rel="stylesheet" href="~/css/room.css" />
+}
+
+@section Scripts {
+  <script type="text/javascript" src="/js/room.js"></script>
+}
+
+<div id="room_id" style="display: none">@(Model.room_id)</div>
 <div class="text-center">
   <h1 class="display-4">Welcome to @(Model.room_id)!</h1>
 </div>
 
 <div>
   <p>Hi @(Model.username)!</p>
-  <!-- TODO: the game should be here -->
+  Cards:
+  <div id="cards" class="card-container"></div>
+
+  <button onclick="emit()">Submit</button>
+
+  <p>Players:</p>
+  <ul id="players"></ul>
 </div>
 

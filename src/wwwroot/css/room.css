@@ -1,0 +1,41 @@
+.card-container {
+    display: flex;
+    flex-direction: row;
+}
+
+.card-active, .card-inactive {
+    margin: 1rem;
+    padding: 0.5rem;
+    max-width: 3.5rem;
+    background-color: #f9f9f9;
+    box-shadow: 0 0 0.25rem #040404;
+    border-radius: 0.33rem;
+    flex-shrink: 1;
+}
+
+.card-active {
+    -webkit-box-shadow: inset 0px 0px 0px 2px #0f0;
+    -moz-box-shadow: inset 0px 0px 0px 2px #0f0;
+    box-shadow: inset 0px 0px 0px 2px #0f0;
+}
+
+.dot {
+    height: 0.8rem;
+    width: 0.8rem;
+    border-radius: 50%;
+    border: 1px solid black;
+    display: inline-block;
+    margin: 0.2rem;
+}
+
+.dot-1 { background-color: red; }
+.dot-2 { background-color: orange; }
+.dot-3 { background-color: yellow; }
+.dot-4 { background-color: green; }
+.dot-5 { background-color: blue; }
+.dot-6 { background-color: purple; }
+
+.dot-active {}
+.dot-inactive {
+    visibility: hidden;
+}
